@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { TextField, Button, Container, Typography, Box, Alert } from '@mui/material';
+import { TextField, Button, Container, Typography, Box, Alert, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 
 const SignUp = () => {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ const SignUp = () => {
     password: '',
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -21,13 +23,22 @@ const SignUp = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
+    
     try {
-      const response = await axios.post('http://localhost:5000/api/signup', formData);
+      const response = await axios.post(`http://localhost:5000/api/signup`, formData);
       if (response.data.success) {
         navigate('/login');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred during signup');
+      console.error('Signup error:', err);
+      setError(
+        err.response?.data?.message || 
+        'Unable to connect to the server. Please try again later.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,6 +58,7 @@ const SignUp = () => {
             name="username"
             value={formData.username}
             onChange={handleChange}
+            disabled={loading}
           />
           <TextField
             margin="normal"
@@ -57,6 +69,7 @@ const SignUp = () => {
             type="email"
             value={formData.email}
             onChange={handleChange}
+            disabled={loading}
           />
           <TextField
             margin="normal"
@@ -67,19 +80,35 @@ const SignUp = () => {
             type="password"
             value={formData.password}
             onChange={handleChange}
+            disabled={loading}
           />
           <Button
             type="submit"
             fullWidth
             variant="contained"
-            sx={{ mt: 3, mb: 2 }}
+            sx={{ mt: 3, mb: 2, height: 48, position: 'relative' }}
+            disabled={loading}
           >
-            Sign Up
+            {loading ? (
+              <CircularProgress
+                size={24}
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  marginTop: '-12px',
+                  marginLeft: '-12px',
+                }}
+              />
+            ) : (
+              'Sign Up'
+            )}
           </Button>
           <Button
             fullWidth
             variant="text"
             onClick={() => navigate('/login')}
+            disabled={loading}
           >
             Already have an account? Login
           </Button>

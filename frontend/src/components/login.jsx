@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextField, Button, Container, Typography, Box, Alert } from '@mui/material';
+import { TextField, Button, Container, Typography, Box, Alert, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -10,6 +10,7 @@ const Login = () => {
     password: '',
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -20,14 +21,52 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    // Validate input
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await axios.post('http://localhost:5000/api/login', formData);
+      const apiUrl = process.env.NODE_ENV === 'production'
+        ? 'https://yourtodo-backend.vercel.app/api/login'
+        : 'http://localhost:5000/api/login';
+
+      console.log('Attempting login with URL:', apiUrl);
+      
+      const response = await axios.post(apiUrl, formData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000 // 10 second timeout
+      });
+
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
+        // notify other components in the same tab
+        try { window.dispatchEvent(new Event('authChange')); } catch (e) {}
         navigate('/');
+      } else {
+        throw new Error('No token received');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid credentials');
+      console.error('Login error:', err);
+      if (err.response) {
+        // Server responded with error
+        setError(err.response.data?.message || 'Invalid credentials');
+      } else if (err.request) {
+        // Request made but no response
+        setError('Unable to reach the server. Please try again.');
+      } else {
+        // Request setup error
+        setError('An error occurred. Please try again.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -48,6 +87,7 @@ const Login = () => {
             type="email"
             value={formData.email}
             onChange={handleChange}
+            disabled={loading}
           />
           <TextField
             margin="normal"
@@ -58,19 +98,35 @@ const Login = () => {
             type="password"
             value={formData.password}
             onChange={handleChange}
+            disabled={loading}
           />
           <Button
             type="submit"
             fullWidth
             variant="contained"
-            sx={{ mt: 3, mb: 2 }}
+            sx={{ mt: 3, mb: 2, height: 48, position: 'relative' }}
+            disabled={loading}
           >
-            Login
+            {loading ? (
+              <CircularProgress
+                size={24}
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  marginTop: '-12px',
+                  marginLeft: '-12px',
+                }}
+              />
+            ) : (
+              'Login'
+            )}
           </Button>
           <Button
             fullWidth
             variant="text"
             onClick={() => navigate('/signup')}
+            disabled={loading}
           >
             Don't have an account? Sign Up
           </Button>

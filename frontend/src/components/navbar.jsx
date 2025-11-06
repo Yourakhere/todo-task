@@ -8,13 +8,24 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleStorage = () => setIsAuthenticated(!!localStorage.getItem('token'));
+    const handleAuthChange = (e) => setIsAuthenticated(!!localStorage.getItem('token'));
+
+    // storage events fire in other tabs; listen to those too
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    // custom event for same-tab auth updates
+    window.addEventListener('authChange', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('authChange', handleAuthChange);
+    };
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     setIsAuthenticated(false);
+    // notify other listeners (same-tab)
+    try { window.dispatchEvent(new Event('authChange')); } catch (e) {}
     navigate('/login');
   };
 
